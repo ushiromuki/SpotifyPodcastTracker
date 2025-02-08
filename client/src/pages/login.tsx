@@ -19,9 +19,17 @@ export default function Login() {
     });
   }
 
-  const handleLogin = () => {
+  const handleLogin = async () => {
     try {
-      window.location.href = "/api/auth/login";
+      const response = await fetch("/api/auth/login");
+      const data = await response.json();
+
+      if (data.url) {
+        console.log('Redirecting to Spotify auth URL:', data.url);
+        window.location.href = data.url;
+      } else {
+        throw new Error('Invalid response from server');
+      }
     } catch (error) {
       console.error('Login error:', error);
       toast({

@@ -17,6 +17,10 @@ const REDIRECT_URI = "http://localhost:5000/api/auth/callback";
 export function registerRoutes(app: Express): Server {
   app.get("/api/auth/login", (_req, res) => {
     try {
+      // Debug logs for environment variables
+      console.log('SPOTIFY_CLIENT_ID exists:', !!SPOTIFY_CLIENT_ID);
+      console.log('SPOTIFY_CLIENT_SECRET exists:', !!SPOTIFY_CLIENT_SECRET);
+
       const state = Math.random().toString(36).substring(7);
       const scope = "user-read-playback-position user-library-read user-read-recently-played";
 
@@ -29,11 +33,13 @@ export function registerRoutes(app: Express): Server {
       });
 
       const authUrl = `https://accounts.spotify.com/authorize?${params.toString()}`;
-      console.log('Redirecting to:', authUrl); // Add logging
-      res.redirect(authUrl);
+      console.log('Full auth URL:', authUrl);
+
+      // 直接URLにリダイレクトする代わりに、JSONレスポンスを返す
+      res.json({ url: authUrl });
     } catch (error) {
       console.error('Login error:', error);
-      res.redirect('/login?error=auth_failed');
+      res.status(500).json({ error: 'Failed to initiate login process' });
     }
   });
 
