@@ -19,6 +19,19 @@ export default function Login() {
     });
   }
 
+  const handleLogin = () => {
+    try {
+      window.location.href = "/api/auth/login";
+    } catch (error) {
+      console.error('Login error:', error);
+      toast({
+        title: "Error",
+        description: "Failed to initiate login process",
+        variant: "destructive",
+      });
+    }
+  };
+
   return (
     <div className="min-h-screen flex items-center justify-center p-4">
       <Card className="w-full max-w-md">
@@ -30,7 +43,7 @@ export default function Login() {
         </CardHeader>
         <CardContent className="flex justify-center">
           <Button
-            onClick={() => window.location.href = "/api/auth/login"}
+            onClick={handleLogin}
             className="bg-[#1DB954] hover:bg-[#1ed760] text-white"
           >
             Login with Spotify

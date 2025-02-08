@@ -16,18 +16,25 @@ const REDIRECT_URI = "http://localhost:5000/api/auth/callback";
 
 export function registerRoutes(app: Express): Server {
   app.get("/api/auth/login", (_req, res) => {
-    const state = Math.random().toString(36).substring(7);
-    const scope = "user-read-playback-position user-library-read user-read-recently-played";
+    try {
+      const state = Math.random().toString(36).substring(7);
+      const scope = "user-read-playback-position user-library-read user-read-recently-played";
 
-    const params = new URLSearchParams({
-      response_type: "code",
-      client_id: SPOTIFY_CLIENT_ID,
-      scope,
-      redirect_uri: REDIRECT_URI,
-      state,
-    });
+      const params = new URLSearchParams({
+        response_type: "code",
+        client_id: SPOTIFY_CLIENT_ID,
+        scope,
+        redirect_uri: REDIRECT_URI,
+        state,
+      });
 
-    res.redirect(`https://accounts.spotify.com/authorize?${params.toString()}`);
+      const authUrl = `https://accounts.spotify.com/authorize?${params.toString()}`;
+      console.log('Redirecting to:', authUrl); // Add logging
+      res.redirect(authUrl);
+    } catch (error) {
+      console.error('Login error:', error);
+      res.redirect('/login?error=auth_failed');
+    }
   });
 
   app.get("/api/auth/callback", async (req, res) => {
