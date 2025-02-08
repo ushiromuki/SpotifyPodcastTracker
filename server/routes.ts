@@ -4,6 +4,12 @@ import { storage } from "./storage";
 import axios from "axios";
 import { spotifyAuthSchema } from "@shared/schema";
 
+declare module "express-session" {
+  interface SessionData {
+    userId: number;
+  }
+}
+
 const SPOTIFY_CLIENT_ID = process.env.SPOTIFY_CLIENT_ID || "";
 const SPOTIFY_CLIENT_SECRET = process.env.SPOTIFY_CLIENT_SECRET || "";
 const REDIRECT_URI = "http://localhost:5000/api/auth/callback";
@@ -11,7 +17,7 @@ const REDIRECT_URI = "http://localhost:5000/api/auth/callback";
 export function registerRoutes(app: Express): Server {
   app.get("/api/auth/login", (_req, res) => {
     const state = Math.random().toString(36).substring(7);
-    const scope = "user-read-playback-position user-library-read";
+    const scope = "user-read-playback-position user-library-read user-read-recently-played";
 
     const params = new URLSearchParams({
       response_type: "code",
@@ -28,7 +34,7 @@ export function registerRoutes(app: Express): Server {
     try {
       const { code, state } = spotifyAuthSchema.parse(req.query);
 
-      const response = await axios.post("https://accounts.spotify.com/api/token", 
+      const response = await axios.post("https://accounts.spotify.com/api/token",
         new URLSearchParams({
           grant_type: "authorization_code",
           code,
