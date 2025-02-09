@@ -1,7 +1,14 @@
 import { Link, useLocation } from "wouter";
+import { Button } from "@/components/ui/button";
+import { logout } from "@/lib/auth";
+import { LogOut } from "lucide-react";
 
 export default function Layout({ children }: { children: React.ReactNode }) {
   const [location] = useLocation();
+
+  const handleLogout = async () => {
+    await logout();
+  };
 
   return (
     <div className="min-h-screen bg-background">
@@ -21,6 +28,15 @@ export default function Layout({ children }: { children: React.ReactNode }) {
                 <Link href="/stats">
                   <a className="text-sm font-medium hover:text-primary">Statistics</a>
                 </Link>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={handleLogout}
+                  className="text-sm font-medium text-muted-foreground hover:text-primary"
+                >
+                  <LogOut className="h-4 w-4 mr-2" />
+                  ログアウト
+                </Button>
               </div>
             </div>
           </div>
