@@ -2,27 +2,37 @@ import { Button } from "@/components/ui/button";
 import { SiSpotify } from "react-icons/si";
 import { Headphones } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { useState } from "react";
 
 export default function Home() {
   const { toast } = useToast();
+  const [isLoading, setIsLoading] = useState(false);
 
   const handleLogin = async () => {
     try {
+      setIsLoading(true);
+      console.log('Initiating Spotify login...');
+
       const response = await fetch("/api/auth/login");
       const data = await response.json();
 
+      console.log('Received auth URL:', data);
+
       if (data.url) {
+        console.log('Redirecting to:', data.url);
         window.location.href = data.url;
       } else {
-        throw new Error('Invalid response from server');
+        throw new Error('認証URLの取得に失敗しました');
       }
     } catch (error) {
       console.error('Login error:', error);
       toast({
-        title: "Error",
-        description: "Failed to initiate login process",
+        title: "エラー",
+        description: "認証プロセスの開始に失敗しました。もう一度お試しください。",
         variant: "destructive",
       });
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -43,9 +53,10 @@ export default function Home() {
           onClick={handleLogin}
           size="lg"
           className="bg-[#1DB954] hover:bg-[#1ed760] text-white"
+          disabled={isLoading}
         >
           <SiSpotify className="mr-2 h-5 w-5" />
-          Connect with Spotify
+          {isLoading ? "接続中..." : "Connect with Spotify"}
         </Button>
       </div>
     </div>

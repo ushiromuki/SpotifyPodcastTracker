@@ -8,11 +8,23 @@ const app = express();
 app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
 
+// Force HTTPS in production
+app.use((req, res, next) => {
+  if (process.env.REPL_SLUG && !req.secure && req.headers['x-forwarded-proto'] !== 'https') {
+    return res.redirect(`https://${req.headers.host}${req.url}`);
+  }
+  next();
+});
+
 // Setup session middleware
 const MemorySession = MemoryStore(session);
 app.use(
   session({
-    cookie: { maxAge: 86400000 },
+    cookie: { 
+      maxAge: 86400000,
+      secure: !!process.env.REPL_SLUG, // Enable secure cookies in production
+      sameSite: 'lax'
+    },
     store: new MemorySession({
       checkPeriod: 86400000 // prune expired entries every 24h
     }),
@@ -69,7 +81,7 @@ app.use((req, res, next) => {
     serveStatic(app);
   }
 
-  const PORT = 5000;
+  const PORT = process.env.PORT || 5000;
   server.listen(PORT, "0.0.0.0", () => {
     log(`serving on port ${PORT}`);
   });
