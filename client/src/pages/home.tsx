@@ -1,24 +1,52 @@
-import { useQuery } from "@tanstack/react-query";
-import { PodcastCard } from "@/components/ui/podcast-card";
-import { getShows } from "@/lib/spotify";
+import { Button } from "@/components/ui/button";
+import { SiSpotify } from "react-icons/si";
+import { Headphones } from "lucide-react";
+import { useToast } from "@/hooks/use-toast";
 
 export default function Home() {
-  const { data: shows, isLoading } = useQuery({
-    queryKey: ["/api/spotify/shows"],
-    queryFn: getShows,
-  });
+  const { toast } = useToast();
 
-  if (isLoading) {
-    return <div>Loading...</div>;
-  }
+  const handleLogin = async () => {
+    try {
+      const response = await fetch("/api/auth/login");
+      const data = await response.json();
+
+      if (data.url) {
+        window.location.href = data.url;
+      } else {
+        throw new Error('Invalid response from server');
+      }
+    } catch (error) {
+      console.error('Login error:', error);
+      toast({
+        title: "Error",
+        description: "Failed to initiate login process",
+        variant: "destructive",
+      });
+    }
+  };
 
   return (
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-      <h1 className="text-3xl font-bold mb-8">Your Podcasts</h1>
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-        {shows?.map((show) => (
-          <PodcastCard key={show.id} show={show} />
-        ))}
+    <div className="min-h-[calc(100vh-4rem)] flex flex-col items-center justify-center p-4 bg-gradient-to-b from-background to-muted">
+      <div className="max-w-2xl text-center space-y-8">
+        <div className="mx-auto w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center mb-8">
+          <Headphones className="w-8 h-8 text-primary" />
+        </div>
+        <h1 className="text-4xl font-bold tracking-tight">
+          Analyze Your Podcast Listening Habits
+        </h1>
+        <p className="text-xl text-muted-foreground">
+          Connect your Spotify account to discover insights about your podcast listening patterns
+          and track your favorite shows.
+        </p>
+        <Button
+          onClick={handleLogin}
+          size="lg"
+          className="bg-[#1DB954] hover:bg-[#1ed760] text-white"
+        >
+          <SiSpotify className="mr-2 h-5 w-5" />
+          Connect with Spotify
+        </Button>
       </div>
     </div>
   );

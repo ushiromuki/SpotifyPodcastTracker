@@ -15,6 +15,9 @@ export default function Layout({ children }: { children: React.ReactNode }) {
                 </Link>
               </div>
               <div className="flex items-center gap-4">
+                <Link href="/podcasts">
+                  <a className="text-sm font-medium hover:text-primary">Podcasts</a>
+                </Link>
                 <Link href="/stats">
                   <a className="text-sm font-medium hover:text-primary">Statistics</a>
                 </Link>
