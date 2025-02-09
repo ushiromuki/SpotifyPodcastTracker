@@ -1,33 +1,35 @@
 import { pgTable, text, serial, integer, timestamp } from "drizzle-orm/pg-core";
+import { sqliteTable, text as sqliteText, integer as sqliteInteger } from "drizzle-orm/sqlite-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 
-export const users = pgTable("users", {
-  id: serial("id").primaryKey(),
-  spotifyId: text("spotify_id").notNull().unique(),
-  accessToken: text("access_token").notNull(),
-  refreshToken: text("refresh_token").notNull(),
-  tokenExpiry: timestamp("token_expiry").notNull(),
+// SQLite schema for Cloudflare D1
+export const users = sqliteTable("users", {
+  id: sqliteInteger("id").primaryKey({ autoIncrement: true }),
+  spotifyId: sqliteText("spotify_id").notNull().unique(),
+  accessToken: sqliteText("access_token").notNull(),
+  refreshToken: sqliteText("refresh_token").notNull(),
+  tokenExpiry: sqliteInteger("token_expiry").notNull(), // SQLite doesn't have timestamp, store as Unix timestamp
 });
 
-export const podcastShows = pgTable("podcast_shows", {
-  id: serial("id").primaryKey(),
-  spotifyId: text("spotify_id").notNull().unique(),
-  name: text("name").notNull(),
-  publisher: text("publisher").notNull(),
-  description: text("description").notNull(),
-  imageUrl: text("image_url").notNull(),
-  userId: integer("user_id").notNull().references(() => users.id),
+export const podcastShows = sqliteTable("podcast_shows", {
+  id: sqliteInteger("id").primaryKey({ autoIncrement: true }),
+  spotifyId: sqliteText("spotify_id").notNull().unique(),
+  name: sqliteText("name").notNull(),
+  publisher: sqliteText("publisher").notNull(),
+  description: sqliteText("description").notNull(),
+  imageUrl: sqliteText("image_url").notNull(),
+  userId: sqliteInteger("user_id").notNull(),
 });
 
-export const playedEpisodes = pgTable("played_episodes", {
-  id: serial("id").primaryKey(),
-  spotifyId: text("spotify_id").notNull(),
-  name: text("name").notNull(),
-  durationMs: integer("duration_ms").notNull(),
-  playedAt: timestamp("played_at").notNull(),
-  showId: integer("show_id").notNull().references(() => podcastShows.id),
-  userId: integer("user_id").notNull().references(() => users.id),
+export const playedEpisodes = sqliteTable("played_episodes", {
+  id: sqliteInteger("id").primaryKey({ autoIncrement: true }),
+  spotifyId: sqliteText("spotify_id").notNull(),
+  name: sqliteText("name").notNull(),
+  durationMs: sqliteInteger("duration_ms").notNull(),
+  playedAt: sqliteInteger("played_at").notNull(), // SQLite doesn't have timestamp, store as Unix timestamp
+  showId: sqliteInteger("show_id").notNull(),
+  userId: sqliteInteger("user_id").notNull(),
 });
 
 // Schema for user insertion

@@ -1,0 +1,21 @@
+name = "spotify-podcast-stats"
+compatibility_date = "2024-02-09"
+compatibility_flags = ["nodejs_compat"]
+
+# D1 Database binding
+[[d1_databases]]
+binding = "DB"
+database_name = "spotify_podcast_stats"
+database_id = "${D1_DATABASE_ID}"
+
+[vars]
+SPOTIFY_CLIENT_ID = ""
+SPOTIFY_CLIENT_SECRET = ""
+JWT_SECRET = ""
+
+# Static asset handling
+[site]
+bucket = "./dist/public"
+
+[build]
+command = "npm run build"

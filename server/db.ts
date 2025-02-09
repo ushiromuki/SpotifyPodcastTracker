@@ -1,15 +1,12 @@
-import { Pool, neonConfig } from '@neondatabase/serverless';
-import { drizzle } from 'drizzle-orm/neon-serverless';
-import ws from "ws";
+import { drizzle } from "drizzle-orm/d1";
+import type { D1Database } from '@cloudflare/workers-types';
+import { eq } from "drizzle-orm";
 import * as schema from "@shared/schema";
 
-neonConfig.webSocketConstructor = ws;
-
-if (!process.env.DATABASE_URL) {
-  throw new Error(
-    "DATABASE_URL must be set. Did you forget to provision a database?",
-  );
+// D1 database will be injected by Cloudflare Workers
+export function createDb(d1: D1Database) {
+  return drizzle(d1, { schema });
 }
 
-export const pool = new Pool({ connectionString: process.env.DATABASE_URL });
-export const db = drizzle({ client: pool, schema });
+// Export types for use in other files
+export type Database = ReturnType<typeof createDb>;

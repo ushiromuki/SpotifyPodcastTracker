@@ -1,27 +1,33 @@
-import type { Express } from "express";
-import { createServer, type Server } from "http";
-import { storage } from "./storage";
-import axios from "axios";
+import { Hono } from "hono";
+import { z } from "zod";
+import { zValidator } from "@hono/zod-validator";
 import { spotifyAuthSchema } from "@shared/schema";
-
-declare module "express-session" {
-  interface SessionData {
-    userId: number;
-  }
-}
+import axios from "axios";
+import { sign, verify } from "hono/jwt";
+import { setCookie } from "hono/cookie";
 
 const SPOTIFY_CLIENT_ID = process.env.SPOTIFY_CLIENT_ID || "";
 const SPOTIFY_CLIENT_SECRET = process.env.SPOTIFY_CLIENT_SECRET || "";
 const REDIRECT_URI = "https://3635f46b-4ee1-45e0-b0f2-2f0abfcad691-00-1gm4duagcdqnv.janeway.replit.dev/api/auth/callback";
+const JWT_SECRET = process.env.JWT_SECRET || "development-secret";
 
-export function registerRoutes(app: Express): Server {
-  app.get("/api/auth/login", (_req, res) => {
+type UserType = {
+  spotifyId: string;
+  accessToken: string;
+  refreshToken: string;
+  tokenExpiry: string;
+};
+
+declare module 'hono' {
+  interface ContextVariableMap {
+    user: UserType;
+  }
+}
+
+export function registerRoutes(app: Hono) {
+  // Auth routes
+  app.get("/api/auth/login", async (c) => {
     try {
-      // Debug logs for environment variables
-      console.log('SPOTIFY_CLIENT_ID exists:', !!SPOTIFY_CLIENT_ID);
-      console.log('SPOTIFY_CLIENT_SECRET exists:', !!SPOTIFY_CLIENT_SECRET);
-      console.log('REDIRECT_URI:', REDIRECT_URI);
-
       const state = Math.random().toString(36).substring(7);
       const scope = "user-read-playback-position user-library-read user-read-recently-played";
 
@@ -34,20 +40,20 @@ export function registerRoutes(app: Express): Server {
       });
 
       const authUrl = `https://accounts.spotify.com/authorize?${params.toString()}`;
-      console.log('Full auth URL:', authUrl);
-
-      res.json({ url: authUrl });
+      return c.json({ url: authUrl });
     } catch (error) {
       console.error('Login error:', error);
-      res.status(500).json({ error: 'Failed to initiate login process' });
+      return c.json({ error: 'Failed to initiate login process' }, 500);
     }
   });
 
-  app.get("/api/auth/callback", async (req, res) => {
+  app.get("/api/auth/callback", async (c) => {
     try {
-      const { code, state } = spotifyAuthSchema.parse(req.query);
+      const query = c.req.query();
+      const { code, state } = spotifyAuthSchema.parse(query);
 
-      const response = await axios.post("https://accounts.spotify.com/api/token",
+      const response = await axios.post(
+        "https://accounts.spotify.com/api/token",
         new URLSearchParams({
           grant_type: "authorization_code",
           code,
@@ -68,116 +74,99 @@ export function registerRoutes(app: Express): Server {
 
       const tokenExpiry = new Date(Date.now() + expires_in * 1000);
 
-      let user = await storage.getUserBySpotifyId(spotifyUser.data.id);
-      if (!user) {
-        user = await storage.createUser({
-          spotifyId: spotifyUser.data.id,
-          accessToken: access_token,
-          refreshToken: refresh_token,
-          tokenExpiry,
-        });
-      } else {
-        user = await storage.updateUserToken(user.id, access_token, refresh_token, tokenExpiry);
-      }
+      // Create JWT token
+      const token = await sign({
+        spotifyId: spotifyUser.data.id,
+        accessToken: access_token,
+        refreshToken: refresh_token,
+        tokenExpiry: tokenExpiry.toISOString(),
+      }, JWT_SECRET);
 
-      req.session.userId = user.id;
-      res.redirect("/stats");
+      // Set JWT token in cookie using Hono's setCookie
+      setCookie(c, "auth_token", token, {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === "production",
+        sameSite: "Lax",
+        path: "/",
+      });
+
+      return c.redirect("/stats");
     } catch (error) {
-      console.error(error);
-      res.redirect("/login?error=auth_failed");
+      console.error('Auth callback error:', error);
+      return c.redirect("/login?error=auth_failed");
     }
   });
 
-  // New endpoint to fetch user's saved shows
-  app.get("/api/spotify/shows", async (req, res) => {
+  // Protected route middleware
+  const auth = async (c: any, next: any) => {
+    const token = c.cookie("auth_token");
+    if (!token) {
+      return c.json({ message: "Unauthorized" }, 401);
+    }
+
     try {
-      const userId = req.session.userId;
-      if (!userId) {
-        return res.status(401).json({ message: "Unauthorized" });
-      }
+      const payload = await verify(token, JWT_SECRET);
+      c.set("user", payload as UserType);
+      await next();
+    } catch (error) {
+      return c.json({ message: "Invalid token" }, 401);
+    }
+  };
 
-      const user = await storage.getUser(userId);
-      if (!user) {
-        return res.status(401).json({ message: "User not found" });
-      }
-
+  // Spotify API routes
+  app.get("/api/spotify/shows", auth, async (c) => {
+    try {
+      const user = c.get("user");
       const response = await axios.get("https://api.spotify.com/v1/me/shows", {
         headers: { Authorization: `Bearer ${user.accessToken}` },
       });
 
-      const shows = await Promise.all(
-        response.data.items.map(async (item: any) => {
-          const show = item.show;
-          const existingShow = await storage.createPodcastShow({
-            spotifyId: show.id,
-            name: show.name,
-            publisher: show.publisher,
-            description: show.description,
-            imageUrl: show.images[0]?.url || "",
-            userId: user.id,
-          });
-          return existingShow;
-        })
-      );
+      const shows = response.data.items.map((item: any) => {
+        const show = item.show;
+        return {
+          id: show.id,
+          name: show.name,
+          publisher: show.publisher,
+          description: show.description,
+          images: show.images,
+        };
+      });
 
-      res.json(shows);
+      return c.json(shows);
     } catch (error) {
-      console.error(error);
-      res.status(500).json({ message: "Failed to fetch shows" });
+      console.error('Shows fetch error:', error);
+      return c.json({ message: "Failed to fetch shows" }, 500);
     }
   });
 
-  // New endpoint to fetch recently played episodes
-  app.get("/api/spotify/episodes/played", async (req, res) => {
+  app.get("/api/spotify/episodes/played", auth, async (c) => {
     try {
-      const userId = req.session.userId;
-      if (!userId) {
-        return res.status(401).json({ message: "Unauthorized" });
-      }
-
-      const user = await storage.getUser(userId);
-      if (!user) {
-        return res.status(401).json({ message: "User not found" });
-      }
-
+      const user = c.get("user");
       const response = await axios.get(
-        "https://api.spotify.com/v1/me/player/recently-played", {
+        "https://api.spotify.com/v1/me/player/recently-played",
+        {
           headers: { Authorization: `Bearer ${user.accessToken}` },
         }
       );
 
-      const episodes = await Promise.all(
-        response.data.items
-          .filter((item: any) => item.track.type === "episode")
-          .map(async (item: any) => {
-            const episode = item.track;
-            const show = await storage.createPodcastShow({
-              spotifyId: episode.show.id,
-              name: episode.show.name,
-              publisher: episode.show.publisher,
-              description: episode.show.description,
-              imageUrl: episode.show.images[0]?.url || "",
-              userId: user.id,
-            });
+      const episodes = response.data.items
+        .filter((item: any) => item.track.type === "episode")
+        .map((item: any) => {
+          const episode = item.track;
+          return {
+            id: episode.id,
+            name: episode.name,
+            duration_ms: episode.duration_ms,
+            played_at: item.played_at,
+          };
+        });
 
-            return storage.createPlayedEpisode({
-              spotifyId: episode.id,
-              name: episode.name,
-              durationMs: episode.duration_ms,
-              playedAt: new Date(item.played_at),
-              showId: show.id,
-              userId: user.id,
-            });
-          })
-      );
-
-      res.json(episodes);
+      return c.json(episodes);
     } catch (error) {
-      console.error(error);
-      res.status(500).json({ message: "Failed to fetch episodes" });
+      console.error('Episodes fetch error:', error);
+      return c.json({ message: "Failed to fetch episodes" }, 500);
     }
   });
 
-  const httpServer = createServer(app);
-  return httpServer;
+  return app;
 }
