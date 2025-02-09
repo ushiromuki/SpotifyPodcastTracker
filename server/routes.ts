@@ -12,9 +12,7 @@ declare module "express-session" {
 
 const SPOTIFY_CLIENT_ID = process.env.SPOTIFY_CLIENT_ID || "";
 const SPOTIFY_CLIENT_SECRET = process.env.SPOTIFY_CLIENT_SECRET || "";
-const REDIRECT_URI = process.env.REPL_SLUG 
-  ? `https://${process.env.REPL_SLUG}.${process.env.REPL_OWNER}.repl.co/api/auth/callback`
-  : "http://localhost:5000/api/auth/callback";
+const REDIRECT_URI = "https://3635f46b-4ee1-45e0-b0f2-2f0abfcad691-00-1gm4duagcdqnv.janeway.replit.dev/api/auth/callback";
 
 export function registerRoutes(app: Express): Server {
   app.get("/api/auth/login", (_req, res) => {
