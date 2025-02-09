@@ -23,6 +23,55 @@ export interface IStorage {
   createPlayedEpisode(episode: InsertPlayedEpisode): Promise<PlayedEpisode>;
 }
 
+// Memory storage for development
+class MemStorage implements IStorage {
+  private users: User[] = [];
+  private shows: PodcastShow[] = [];
+  private episodes: PlayedEpisode[] = [];
+  private nextId = 1;
+
+  async getUser(id: number) {
+    return this.users.find(u => u.id === id);
+  }
+
+  async getUserBySpotifyId(spotifyId: string) {
+    return this.users.find(u => u.spotifyId === spotifyId);
+  }
+
+  async createUser(user: InsertUser) {
+    const newUser = { ...user, id: this.nextId++ } as User;
+    this.users.push(newUser);
+    return newUser;
+  }
+
+  async updateUserToken(id: number, accessToken: string, refreshToken: string, tokenExpiry: Date) {
+    const user = await this.getUser(id);
+    if (!user) throw new Error('User not found');
+    Object.assign(user, { accessToken, refreshToken, tokenExpiry: Math.floor(tokenExpiry.getTime() / 1000) });
+    return user;
+  }
+
+  async getPodcastShows(userId: number) {
+    return this.shows.filter(s => s.userId === userId);
+  }
+
+  async createPodcastShow(show: InsertPodcastShow) {
+    const newShow = { ...show, id: this.nextId++ } as PodcastShow;
+    this.shows.push(newShow);
+    return newShow;
+  }
+
+  async getPlayedEpisodes(userId: number) {
+    return this.episodes.filter(e => e.userId === userId);
+  }
+
+  async createPlayedEpisode(episode: InsertPlayedEpisode) {
+    const newEpisode = { ...episode, id: this.nextId++ } as PlayedEpisode;
+    this.episodes.push(newEpisode);
+    return newEpisode;
+  }
+}
+
 export class D1Storage implements IStorage {
   constructor(private db: Database) {}
 
@@ -48,7 +97,7 @@ export class D1Storage implements IStorage {
       .set({ 
         accessToken, 
         refreshToken, 
-        tokenExpiry: Math.floor(tokenExpiry.getTime() / 1000) // Convert to Unix timestamp
+        tokenExpiry: Math.floor(tokenExpiry.getTime() / 1000)
       })
       .where(eq(users.id, id))
       .returning();
@@ -80,9 +129,8 @@ export class D1Storage implements IStorage {
   }
 }
 
-// storage will be initialized with the D1 database instance in the Cloudflare Worker
 export let storage: IStorage;
 
-export function initializeStorage(db: Database) {
-  storage = new D1Storage(db);
+export function initializeStorage(db: Database | null) {
+  storage = db ? new D1Storage(db) : new MemStorage();
 }
