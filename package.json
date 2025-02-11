@@ -5,6 +5,8 @@
   "license": "MIT",
   "scripts": {
     "dev": "tsx server/dev.ts",
+    "dev:cloudflare": "bun run server/worker.ts",
+    "deploy:cloudflare": "wrangler pages deploy dist --project-name=spotify-podcast-stats",
     "build": "vite build && esbuild server/index.ts --platform=node --packages=external --bundle --format=esm --outdir=dist",
     "start": "NODE_ENV=production node dist/index.js",
     "check": "tsc",
@@ -18,6 +20,7 @@
     "@hookform/resolvers": "^3.9.1",
     "@jridgewell/trace-mapping": "^0.3.25",
     "@neondatabase/serverless": "^0.10.4",
+    "@prisma/client": "^6.3.1",
     "@radix-ui/react-accordion": "^1.2.1",
     "@radix-ui/react-alert-dialog": "^1.1.2",
     "@radix-ui/react-aspect-ratio": "^1.1.0",
@@ -68,6 +71,7 @@
     "openai": "^4.83.0",
     "passport": "^0.7.0",
     "passport-local": "^1.0.0",
+    "prisma": "^6.3.1",
     "react": "^18.3.1",
     "react-day-picker": "^8.10.1",
     "react-dom": "^18.3.1",
@@ -86,6 +90,7 @@
   "devDependencies": {
     "@hono/vite-cloudflare-pages": "^0.4.2",
     "@hono/vite-dev-server": "^0.18.1",
+    "@prisma/adapter-d1": "^6.3.1",
     "@replit/vite-plugin-runtime-error-modal": "^0.0.3",
     "@tailwindcss/typography": "^0.5.15",
     "@types/connect-pg-simple": "^7.0.3",
@@ -105,7 +110,8 @@
     "tailwindcss": "^3.4.14",
     "tsx": "^4.19.1",
     "typescript": "5.6.3",
-    "vite": "^6.1.0"
+    "vite": "^6.1.0",
+    "wrangler": "^3.107.3"
   },
   "optionalDependencies": {
     "bufferutil": "^4.0.8"

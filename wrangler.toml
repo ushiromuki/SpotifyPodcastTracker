@@ -18,4 +18,4 @@ JWT_SECRET = "${JWT_SECRET}"
 bucket = "./dist/public"
 
 [build]
-command = "npm run build"
+command = "pnpm run build"

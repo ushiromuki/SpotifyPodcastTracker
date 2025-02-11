@@ -1,0 +1,48 @@
+datasource db {
+  provider = "sqlite"
+  url      = "file:dev.db"
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+model User {
+  id           Int            @id @default(autoincrement())
+  spotifyId    String        @unique
+  accessToken  String
+  refreshToken String
+  tokenExpiry  Int
+  shows        PodcastShow[]
+  episodes     PlayedEpisode[]
+
+  @@map("users")
+}
+
+model PodcastShow {
+  id          Int            @id @default(autoincrement())
+  spotifyId   String        @unique
+  name        String
+  publisher   String
+  description String
+  imageUrl    String
+  userId      Int
+  user        User          @relation(fields: [userId], references: [id])
+  episodes    PlayedEpisode[]
+
+  @@map("podcast_shows")
+}
+
+model PlayedEpisode {
+  id         Int         @id @default(autoincrement())
+  spotifyId  String
+  name       String
+  durationMs Int
+  playedAt   Int
+  showId     Int
+  userId     Int
+  show       PodcastShow @relation(fields: [showId], references: [id])
+  user       User       @relation(fields: [userId], references: [id])
+
+  @@map("played_episodes")
+}
