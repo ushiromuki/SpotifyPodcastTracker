@@ -1,10 +1,10 @@
 import { Hono } from "hono";
 import { z } from "zod";
 import { zValidator } from "@hono/zod-validator";
-import { spotifyAuthSchema } from "@shared/schema";
 import axios from "axios";
 import { sign, verify } from "hono/jwt";
 import { setCookie } from "hono/cookie";
+import { PrismaStorage } from './storage';
 
 const SPOTIFY_CLIENT_ID = process.env.SPOTIFY_CLIENT_ID || "";
 const SPOTIFY_CLIENT_SECRET = process.env.SPOTIFY_CLIENT_SECRET || "";
@@ -21,6 +21,7 @@ type UserType = {
 declare module 'hono' {
   interface ContextVariableMap {
     user: UserType;
+    storage: PrismaStorage;
   }
 }
 
@@ -50,7 +51,8 @@ export function registerRoutes(app: Hono) {
   app.get("/api/auth/callback", async (c) => {
     try {
       const query = c.req.query();
-      const { code } = spotifyAuthSchema.parse(query);
+      const { code } = z.object({ code: z.string() }).parse(query);
+      const storage = c.get('storage');
 
       const response = await axios.post(
         "https://accounts.spotify.com/api/token",
@@ -72,11 +74,30 @@ export function registerRoutes(app: Hono) {
       });
 
       const tokenExpiry = new Date(Date.now() + expires_in * 1000);
+
+      // ユーザーを取得または作成
+      let user = await storage.getUserBySpotifyId(spotifyUser.data.id);
+      if (!user) {
+        user = await storage.createUser({
+          spotifyId: spotifyUser.data.id,
+          accessToken: access_token,
+          refreshToken: refresh_token,
+          tokenExpiry: Math.floor(tokenExpiry.getTime() / 1000),
+        });
+      } else {
+        user = await storage.updateUserToken(
+          user.id,
+          access_token,
+          refresh_token,
+          tokenExpiry
+        );
+      }
+
       const token = await sign({
-        spotifyId: spotifyUser.data.id,
-        accessToken: access_token,
-        refreshToken: refresh_token,
-        tokenExpiry: tokenExpiry.toISOString(),
+        spotifyId: user.spotifyId,
+        accessToken: user.accessToken,
+        refreshToken: user.refreshToken,
+        tokenExpiry: new Date(user.tokenExpiry * 1000).toISOString(),
       }, JWT_SECRET);
 
       setCookie(c, "auth_token", token, {
