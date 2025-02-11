@@ -5,13 +5,13 @@ compatibility_flags = ["nodejs_compat"]
 # D1 Database binding
 [[d1_databases]]
 binding = "DB"
-database_name = "spotify_podcast_stats"
+database_name = "my-spotify-app-db"
 database_id = "${D1_DATABASE_ID}"
 
 [vars]
-SPOTIFY_CLIENT_ID = ""
-SPOTIFY_CLIENT_SECRET = ""
-JWT_SECRET = ""
+SPOTIFY_CLIENT_ID = "${SPOTIFY_CLIENT_ID}"
+SPOTIFY_CLIENT_SECRET = "${SPOTIFY_CLIENT_SECRET}"
+JWT_SECRET = "${JWT_SECRET}"
 
 # Static asset handling
 [site]

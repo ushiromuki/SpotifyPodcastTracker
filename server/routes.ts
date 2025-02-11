@@ -8,7 +8,7 @@ import { setCookie } from "hono/cookie";
 
 const SPOTIFY_CLIENT_ID = process.env.SPOTIFY_CLIENT_ID || "";
 const SPOTIFY_CLIENT_SECRET = process.env.SPOTIFY_CLIENT_SECRET || "";
-const REDIRECT_URI = "https://3635f46b-4ee1-45e0-b0f2-2f0abfcad691-00-1gm4duagcdqnv.janeway.replit.dev/api/auth/callback";
+const REDIRECT_URI = "http://localhost:5000/api/auth/callback";
 const JWT_SECRET = process.env.JWT_SECRET || "development-secret";
 
 type UserType = {
@@ -50,7 +50,7 @@ export function registerRoutes(app: Hono) {
   app.get("/api/auth/callback", async (c) => {
     try {
       const query = c.req.query();
-      const { code, state } = spotifyAuthSchema.parse(query);
+      const { code } = spotifyAuthSchema.parse(query);
 
       const response = await axios.post(
         "https://accounts.spotify.com/api/token",
@@ -67,14 +67,11 @@ export function registerRoutes(app: Hono) {
       );
 
       const { access_token, refresh_token, expires_in } = response.data;
-
       const spotifyUser = await axios.get("https://api.spotify.com/v1/me", {
         headers: { Authorization: `Bearer ${access_token}` },
       });
 
       const tokenExpiry = new Date(Date.now() + expires_in * 1000);
-
-      // Create JWT token
       const token = await sign({
         spotifyId: spotifyUser.data.id,
         accessToken: access_token,
@@ -82,7 +79,6 @@ export function registerRoutes(app: Hono) {
         tokenExpiry: tokenExpiry.toISOString(),
       }, JWT_SECRET);
 
-      // Set JWT token in cookie using Hono's setCookie
       setCookie(c, "auth_token", token, {
         httpOnly: true,
         secure: process.env.NODE_ENV === "production",
@@ -121,25 +117,14 @@ export function registerRoutes(app: Hono) {
         headers: { Authorization: `Bearer ${user.accessToken}` },
       });
 
-      const shows = response.data.items.map((item: any) => {
-        const show = item.show;
-        return {
-          id: show.id,
-          name: show.name,
-          publisher: show.publisher,
-          description: show.description,
-          images: show.images,
-        };
-      });
-
-      return c.json(shows);
+      return c.json(response.data.items);
     } catch (error) {
       console.error('Shows fetch error:', error);
       return c.json({ message: "Failed to fetch shows" }, 500);
     }
   });
 
-  app.get("/api/spotify/episodes/played", auth, async (c) => {
+  app.get("/api/spotify/episodes/recent", auth, async (c) => {
     try {
       const user = c.get("user");
       const response = await axios.get(
@@ -150,16 +135,7 @@ export function registerRoutes(app: Hono) {
       );
 
       const episodes = response.data.items
-        .filter((item: any) => item.track.type === "episode")
-        .map((item: any) => {
-          const episode = item.track;
-          return {
-            id: episode.id,
-            name: episode.name,
-            duration_ms: episode.duration_ms,
-            played_at: item.played_at,
-          };
-        });
+        .filter((item: any) => item.track.type === "episode");
 
       return c.json(episodes);
     } catch (error) {

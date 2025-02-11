@@ -1,14 +1,12 @@
-import { defineConfig } from "drizzle-kit";
+import { drizzle, AnyD1Database } from "drizzle-orm/d1";
+import { users, podcastShows, playedEpisodes } from "./shared/schema"; // ←パスは各自調整してください
 
-if (!process.env.DATABASE_URL) {
-  throw new Error("DATABASE_URL, ensure the database is provisioned");
+declare global {
+  // Cloudflare Workers の D1 バインディングにより、グローバル変数 DB が提供されます
+  const DB: AnyD1Database;
 }
 
-export default defineConfig({
-  out: "./migrations",
-  schema: "./shared/schema.ts",
-  dialect: "postgresql",
-  dbCredentials: {
-    url: process.env.DATABASE_URL,
-  },
-});
+// schema オブジェクトとしてまとめる例（あるいは個別に渡しても可）
+const schema = { users, podcastShows, playedEpisodes };
+
+export const db = drizzle(DB, { schema });
