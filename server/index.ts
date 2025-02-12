@@ -8,8 +8,9 @@ import path from "path";
 import { fileURLToPath } from "url";
 import { registerRoutes } from "./routes";
 import fs from "fs/promises";
+import { Bindings } from "./bindings";
 
-const app = new Hono();
+const app = new Hono<{ Bindings: Bindings}>();
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
@@ -17,6 +18,7 @@ const __dirname = path.dirname(__filename);
 app.use("*", logger());
 app.use("*", secureHeaders());
 app.use("*", cors());
+
 
 // API Routes
 registerRoutes(app);

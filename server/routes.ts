@@ -1,11 +1,12 @@
-import { Hono } from "hono";
+import type { Hono } from "hono";
 import { z } from "zod";
 import { zValidator } from "@hono/zod-validator";
 import axios from "axios";
 import { sign, verify } from "hono/jwt";
 import { setCookie } from "hono/cookie";
-import { PrismaStorage } from './storage';
-
+import { getPrismaClient } from './prismaClient';
+import type { Bindings } from "./bindings";
+import type { D1Database } from '@cloudflare/workers-types';
 const SPOTIFY_CLIENT_ID = process.env.SPOTIFY_CLIENT_ID || "";
 const SPOTIFY_CLIENT_SECRET = process.env.SPOTIFY_CLIENT_SECRET || "";
 const REDIRECT_URI = "http://localhost:5000/api/auth/callback";
@@ -18,16 +19,10 @@ type UserType = {
   tokenExpiry: string;
 };
 
-declare module 'hono' {
-  interface ContextVariableMap {
-    user: UserType;
-    storage: PrismaStorage;
-  }
-}
-
-export function registerRoutes(app: Hono) {
+export function registerRoutes(app: Hono<{ Bindings: Bindings }>) {
   // Auth routes
   app.get("/api/auth/login", async (c) => {
+    
     try {
       const state = Math.random().toString(36).substring(7);
       const scope = "user-read-playback-position user-library-read user-read-recently-played";
@@ -49,10 +44,10 @@ export function registerRoutes(app: Hono) {
   });
 
   app.get("/api/auth/callback", async (c) => {
+    const prisma = await getPrismaClient(c.env.DB as D1Database);
     try {
       const query = c.req.query();
       const { code } = z.object({ code: z.string() }).parse(query);
-      const storage = c.get('storage');
 
       const response = await axios.post(
         "https://accounts.spotify.com/api/token",
@@ -76,21 +71,31 @@ export function registerRoutes(app: Hono) {
       const tokenExpiry = new Date(Date.now() + expires_in * 1000);
 
       // ユーザーを取得または作成
-      let user = await storage.getUserBySpotifyId(spotifyUser.data.id);
-      if (!user) {
-        user = await storage.createUser({
+      let user = await prisma.user.findUnique({
+        where: {
           spotifyId: spotifyUser.data.id,
+        },
+      });
+      if (!user) {
+        user = await prisma.user.create({
+          data: {
+            spotifyId: spotifyUser.data.id,
           accessToken: access_token,
           refreshToken: refresh_token,
-          tokenExpiry: Math.floor(tokenExpiry.getTime() / 1000),
+            tokenExpiry: Math.floor(tokenExpiry.getTime() / 1000),
+          },
         });
       } else {
-        user = await storage.updateUserToken(
-          user.id,
-          access_token,
-          refresh_token,
-          tokenExpiry
-        );
+        user = await prisma.user.update({
+          where: {
+            id: user.id,
+          },
+          data: {
+            accessToken: access_token,
+            refreshToken: refresh_token,
+            tokenExpiry: Math.floor(tokenExpiry.getTime() / 1000),
+          },
+        });
       }
 
       const token = await sign({

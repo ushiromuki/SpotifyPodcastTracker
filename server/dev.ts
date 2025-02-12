@@ -6,14 +6,10 @@ import { cors } from "hono/cors";
 import { setupVite } from "./vite";
 import { registerRoutes } from "./routes";
 import { log } from "./vite";
-import { PrismaClient } from '@prisma/client';
-import { PrismaStorage } from './storage';
-
-const prisma = new PrismaClient();
-const storage = new PrismaStorage(prisma);
+import { Bindings } from "./bindings";
 
 async function createDevServer() {
-  const app = new Hono();
+  const app = new Hono<{ Bindings: Bindings }>();
 
   // CORSの設定を追加
   app.use("*", cors({
@@ -27,11 +23,7 @@ async function createDevServer() {
   app.use("*", logger());
   app.use("*", secureHeaders());
 
-  // ストレージをコンテキストに追加
-  app.use('*', async (c, next) => {
-    c.set('storage', storage);
-    await next();
-  });
+  
 
   // APIルートの登録
   registerRoutes(app);
