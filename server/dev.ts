@@ -1,5 +1,4 @@
 import { Hono } from "hono";
-import { serve } from "@hono/node-server";
 import { logger } from "hono/logger";
 import { secureHeaders } from "hono/secure-headers";
 import { cors } from "hono/cors";
@@ -11,9 +10,10 @@ import { Bindings } from "./bindings";
 async function createDevServer() {
   const app = new Hono<{ Bindings: Bindings }>();
 
+  const port = process.env.PORT || 5000;
   // CORSの設定を追加
   app.use("*", cors({
-    origin: ["http://localhost:5000", "http://127.0.0.1:5000"],
+    origin: [`http://localhost:${port}`, `http://127.0.0.1:${port}`],
     credentials: true,
     allowMethods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
     allowHeaders: ["Content-Type", "Authorization", "X-Requested-With"],
@@ -23,22 +23,19 @@ async function createDevServer() {
   app.use("*", logger());
   app.use("*", secureHeaders());
 
-  
-
   // APIルートの登録
   registerRoutes(app);
 
   // Viteの開発サーバーのセットアップ
   await setupVite(app);
 
-  const port = process.env.PORT || 5000;
   log(`開発サーバーを起動しています: http://localhost:${port}`);
 
-  serve({
+  return {
     fetch: app.fetch,
     port: Number(port),
     hostname: "0.0.0.0"
-  });
+  };
 }
 
 createDevServer().catch((err) => {

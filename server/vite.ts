@@ -17,7 +17,8 @@ export function log(message: string, source = "hono") {
     hour: "numeric",
     minute: "2-digit",
     second: "2-digit",
-    hour12: true,
+    hour12: false,
+    timeZone: "Asia/Tokyo",
   });
 
   console.log(`${formattedTime} [${source}] ${message}`);

@@ -4,10 +4,8 @@
   "type": "module",
   "license": "MIT",
   "scripts": {
-    "dev": "vite",
-    "dev:cloudflare": "bun run server/worker.ts",
-    "deploy:cloudflare": "wrangler pages deploy dist --project-name=spotify-podcast-stats",
-    "build": "vite build --mode client && vite build",
+    "dev": "vite --mode client",
+    "build": "vite build --mode client && vite build --mode server",
     "start": "NODE_ENV=production node dist/index.js",
     "check": "tsc"
   },
@@ -61,12 +59,12 @@
     "express": "^4.21.2",
     "express-session": "^1.18.1",
     "framer-motion": "^11.18.2",
-    "hono": "^4.7.0",
+    "hono": "^4.7.1",
     "input-otp": "^1.4.2",
     "lucide-react": "^0.453.0",
     "memorystore": "^1.6.7",
     "nanoid": "^5.0.9",
-    "openai": "^4.83.0",
+    "openai": "^4.85.1",
     "passport": "^0.7.0",
     "passport-local": "^1.0.0",
     "prisma": "^6.3.1",
@@ -80,9 +78,9 @@
     "tailwind-merge": "^2.6.0",
     "tailwindcss-animate": "^1.0.7",
     "vaul": "^1.1.2",
-    "wouter": "^3.5.1",
+    "wouter": "^3.6.0",
     "ws": "^8.18.0",
-    "zod": "^3.24.1",
+    "zod": "^3.24.2",
     "zod-validation-error": "^3.4.0"
   },
   "devDependencies": {
@@ -112,7 +110,7 @@
     "tsx": "^4.19.2",
     "typescript": "5.6.3",
     "vite": "^6.1.0",
-    "wrangler": "^3.107.3"
+    "wrangler": "^3.109.1"
   },
   "optionalDependencies": {
     "bufferutil": "^4.0.9"
